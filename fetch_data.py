@@ -17,11 +17,14 @@ def query(endpoint,**params):
         raise RuntimeError(f'HTTP {e.code}: '+e.read(350).decode('utf-8','replace'))
     root=ET.fromstring(raw)
     err=root.findtext('.//returnReasonCode')
-    if err and err!='00':raise RuntimeError(f'API 오류 {err}: '+str(root.findtext('.//returnAuthMsg')))
+    if err and err!='00':
+        msg=root.findtext('.//returnAuthMsg') or root.findtext('.//errMsg') or '설명 없음'
+        raise RuntimeError(f'공공데이터 API 응답 오류: 코드={err}, 메시지={msg}, 경로={endpoint}. 공식 가이드의 서비스 주소는 HTTP로 표기되어 있으나 현재 요청은 HTTPS입니다. 인증키는 출력하지 않습니다.')
     if root.find('.//OpenAPI_ServiceResponse') is not None:raise RuntimeError(raw[:350].decode('utf-8','replace'))
     return [{c.tag:c.text for c in el} for el in root.findall('.//item')]
 
 def main():
+    print('시설코드 조회 시작: 원등 (인증키 비공개)')
     matches=query('reservoircode',fac_name='원등')
     matches=[r for r in matches if '원등' in (r.get('fac_name') or '') and '고흥' in (r.get('county') or '')]
     if len(matches)!=1:raise RuntimeError('고흥 원등저수지 식별 실패: '+str(matches))
